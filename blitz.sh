@@ -25,18 +25,17 @@ COUNTER=0
 # Execute on each host / Auf jedem Host ausführen
 for host in $(grep -v "^#" $HOSTS | grep -v "^$"); do
   # Show current host / Aktuellen Host anzeigen
-  echo -n "[RUN] $host: "
+  echo -e "\n[RUN] $host:"
   
   # Run command via SSH / Befehl über SSH ausführen
-  ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD" >/dev/null 2>&1
-  
-  # Check result / Ergebnis prüfen
-  if [ $? -eq 0 ]; then
-    echo "[OK]"
+  # Now showing output (removed redirections to /dev/null)
+  if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD"; then
+    echo "[OK] Command succeeded on $host"
     ((COUNTER++))
   else
-    echo "[FAIL]"
+    echo "[FAIL] Command failed on $host"
   fi
+  echo "----------------------------------------"
 done
 
 # Show summary / Zusammenfassung anzeigen
