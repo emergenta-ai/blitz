@@ -85,10 +85,12 @@ for host in $(grep -v "^#" $HOSTS | grep -v "^$"); do
   # SSH-Befehl mit entsprechender Passwortmethode ausführen
   if [ "$PASSWORD_MODE" == "none" ]; then
     # Normal SSH (will prompt for password) / Normales SSH (fragt nach Passwort)
-    ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD"
+    # Added -t flag to force TTY allocation for sudo / -t-Flag hinzugefügt, um TTY-Zuweisung für sudo zu erzwingen
+    ssh -t -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD"
   else
     # Use sshpass with password file / sshpass mit Passwortdatei verwenden
-    sshpass -f "$PASS_FILE" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD"
+    # Added -t flag to force TTY allocation for sudo / -t-Flag hinzugefügt, um TTY-Zuweisung für sudo zu erzwingen
+    sshpass -f "$PASS_FILE" ssh -t -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD"
   fi
   
   # Check result / Ergebnis prüfen
