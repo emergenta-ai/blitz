@@ -74,10 +74,18 @@ elif [ "$PASSWORD_MODE" == "env" ]; then
 fi
 
 echo "[INFO] Executing: $FULL_CMD on hosts from $HOSTS"
-COUNTER=0
+
+# Initialize arrays to track results
+TOTAL_HOSTS=0
+declare -a HOST_LIST
+declare -a EXIT_CODES
 
 # Execute on each host / Auf jedem Host ausführen
 for host in $(grep -v "^#" $HOSTS | grep -v "^$"); do
+  # Count total hosts
+  TOTAL_HOSTS=$((TOTAL_HOSTS + 1))
+  HOST_LIST+=("$host")
+  
   # Show current host / Aktuellen Host anzeigen
   echo -e "\n[RUN] $host:"
   
@@ -87,18 +95,22 @@ for host in $(grep -v "^#" $HOSTS | grep -v "^$"); do
     # Normal SSH (will prompt for password) / Normales SSH (fragt nach Passwort)
     # Added -t flag to force TTY allocation for sudo / -t-Flag hinzugefügt, um TTY-Zuweisung für sudo zu erzwingen
     ssh -t -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD"
+    EXIT_CODE=$?
   else
     # Use sshpass with password file / sshpass mit Passwortdatei verwenden
     # Added -t flag to force TTY allocation for sudo / -t-Flag hinzugefügt, um TTY-Zuweisung für sudo zu erzwingen
     sshpass -f "$PASS_FILE" ssh -t -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host "$FULL_CMD"
+    EXIT_CODE=$?
   fi
   
-  # Check result / Ergebnis prüfen
-  if [ $? -eq 0 ]; then
-    echo "[OK] Command succeeded on $host"
-    ((COUNTER++))
+  # Store exit code for summary
+  EXIT_CODES+=($EXIT_CODE)
+  
+  # Show exit code status
+  if [ $EXIT_CODE -eq 0 ]; then
+    echo "[EXIT: $EXIT_CODE] Command completed (SUCCESS)"
   else
-    echo "[FAIL] Command failed on $host"
+    echo "[EXIT: $EXIT_CODE] Command completed (WITH CODE $EXIT_CODE)"
   fi
   echo "----------------------------------------"
 done
@@ -112,5 +124,24 @@ if [ "$PASSWORD_MODE" != "none" ]; then
     fi
 fi
 
-# Show summary / Zusammenfassung anzeigen
-echo "[DONE] Executed on $COUNTER hosts"
+# Show detailed summary / Detaillierte Zusammenfassung anzeigen
+echo -e "\n[SUMMARY] Results for all hosts:"
+echo "----------------------------------------"
+SUCCESS_COUNT=0
+NONZERO_COUNT=0
+
+for ((i=0; i<$TOTAL_HOSTS; i++)); do
+  host="${HOST_LIST[$i]}"
+  exit_code="${EXIT_CODES[$i]}"
+  
+  if [ $exit_code -eq 0 ]; then
+    echo "[OK] $host (exit code: 0)"
+    SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+  else
+    echo "[CODE: $exit_code] $host"
+    NONZERO_COUNT=$((NONZERO_COUNT + 1))
+  fi
+done
+
+echo "----------------------------------------"
+echo "[DONE] Executed on $TOTAL_HOSTS hosts ($SUCCESS_COUNT with exit code 0, $NONZERO_COUNT with non-zero exit code)"
